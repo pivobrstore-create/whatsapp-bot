@@ -1,6 +1,7 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
-const { gerarOferta } = require('./offers');
+const fs = require('fs');
+const { buscarUltimaOferta } = require('./telegramSync');
 
 
 const client = new Client({
@@ -14,21 +15,35 @@ qrcode.generate(qr, { small: true });
 
 
 client.on('ready', () => {
-console.log('✅ WhatsApp BOT ONLINE');
-});
+console.log('✅ WhatsApp BOT ONLINE (ESPELHO TELEGRAM)');
 
 
-client.on('message', async message => {
-if (message.body.startsWith('oferta')) {
-const link = message.body.replace('oferta ', '');
-const resposta = await gerarOferta(link);
-client.sendMessage(message.from, resposta);
+setInterval(async () => {
+const oferta = await buscarUltimaOferta();
+
+
+if (!oferta || !oferta.texto) return;
+
+
+if (!fs.existsSync('lastPost.json')) {
+fs.writeFileSync('lastPost.json', JSON.stringify({ texto: "" }));
 }
 
 
-if (message.body === 'menu') {
-client.sendMessage(message.from, `📦 MENU\n1 - Última oferta\n2 - Promoções do dia\n3 - Categoria`);
+let last = JSON.parse(fs.readFileSync('lastPost.json'));
+
+
+if (last.texto !== oferta.texto) {
+await client.// ENVIO PARA GRUPO DE CLIENTES
+// Substitua pelo ID do grupo do WhatsApp
+// Exemplo: 1203630XXXXXXXX@g.us
+await client.sendMessage(process.env.GRUPO_ID, oferta.texto);
+fs.writeFileSync('lastPost.json', JSON.stringify({ texto: oferta.texto }));
+console.log('📤 Oferta espelhada para WhatsApp');
 }
+
+
+}, 60000); // a cada 1 minuto
 });
 
 
