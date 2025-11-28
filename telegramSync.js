@@ -2,36 +2,41 @@ const axios = require('axios');
 
 async function buscarUltimaOfertaCompleta() {
     try {
-        const response = await axios.get(process.env.TELEGRAM_API);
-        const updates = response.data.result;
+        const token = process.env.TELEGRAM_TOKEN;
+        const chatId = process.env.TELEGRAM_CHAT_ID;
 
-        if (!updates || updates.length === 0) return null;
+        const response = await axios.get(
+            `https://api.telegram.org/bot${token}/getChatHistory`,
+            {
+                params: {
+                    chat_id: chatId,
+                    limit: 1
+                }
+            }
+        );
 
-        const ultima = updates[updates.length - 1];
-        const msg = ultima.message;
+        const mensagem = response.data.result[0];
+        if (!mensagem) return null;
 
-        if (!msg || (!msg.text && !msg.caption)) return null;
-
-        let texto = msg.text || msg.caption;
+        let texto = mensagem.text || mensagem.caption || '';
         let imagem = null;
 
-        if (msg.photo) {
-            const fileId = msg.photo[msg.photo.length - 1].file_id;
-            const token = process.env.TELEGRAM_API.split('bot')[1].split('/')[0];
+        if (mensagem.photo) {
+            const fileId = mensagem.photo[mensagem.photo.length - 1].file_id;
 
-            const fileData = await axios.get(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
+            const fileData = await axios.get(
+                `https://api.telegram.org/bot${token}/getFile`,
+                { params: { file_id: fileId } }
+            );
+
             const filePath = fileData.data.result.file_path;
-
             imagem = `https://api.telegram.org/file/bot${token}/${filePath}`;
         }
 
-        return {
-            texto,
-            imagem
-        };
+        return { texto, imagem };
 
     } catch (error) {
-        console.log('Erro ao buscar dados do Telegram:', error.message);
+        console.log('Erro ao buscar oferta do Telegram:', error.message);
         return null;
     }
 }
