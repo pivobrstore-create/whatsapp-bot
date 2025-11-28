@@ -1,35 +1,39 @@
 const axios = require('axios');
 
 async function buscarUltimaOfertaCompleta() {
-try {
-const response = await axios.get(process.env.TELEGRAM_API);
-const updates = response.data.result;
+    try {
+        const response = await axios.get(process.env.TELEGRAM_API);
+        const updates = response.data.result;
 
-if (!updates || updates.length === 0) return null;
+        if (!updates || updates.length === 0) return null;
 
-const ultima = updates[updates.length - 1];
-const msg = ultima.message;
+        const ultima = updates[updates.length - 1];
+        const msg = ultima.message;
 
-if (!msg || !msg.text) return null;
+        if (!msg || (!msg.text && !msg.caption)) return null;
 
-let imagem = null;
+        let texto = msg.text || msg.caption;
+        let imagem = null;
 
-if (msg.photo) {
-const fileId = msg.photo[msg.photo.length - 1].file_id;
-const fileData = await axios.get(`https://api.telegram.org/bot${process.env.TELEGRAM_API.split('bot')[1].split('/')[0]}/getFile?file_id=${fileId}`);
-const filePath = fileData.data.result.file_path;
-imagem = `https://api.telegram.org/file/bot${process.env.TELEGRAM_API.split('bot')[1].split('/')[0]}/${filePath}`;
-}
+        if (msg.photo) {
+            const fileId = msg.photo[msg.photo.length - 1].file_id;
+            const token = process.env.TELEGRAM_API.split('bot')[1].split('/')[0];
 
-return {
-texto: msg.text,
-imagem: imagem
-};
+            const fileData = await axios.get(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
+            const filePath = fileData.data.result.file_path;
 
-} catch (err) {
-console.log("Erro ao buscar oferta do Telegram:", err.message);
-return null;
-}
+            imagem = `https://api.telegram.org/file/bot${token}/${filePath}`;
+        }
+
+        return {
+            texto,
+            imagem
+        };
+
+    } catch (error) {
+        console.log('Erro ao buscar dados do Telegram:', error.message);
+        return null;
+    }
 }
 
 module.exports = { buscarUltimaOfertaCompleta };
