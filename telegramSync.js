@@ -1,37 +1,35 @@
 const axios = require('axios');
-const fs = require('fs');
-
-
-const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
-const CHANNEL_ID = process.env.CHANNEL_ID;
-
 
 async function buscarUltimaOfertaCompleta() {
-const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/getUpdates`;
-const { data } = await axios.get(url);
+try {
+const response = await axios.get(process.env.TELEGRAM_API);
+const updates = response.data.result;
 
+if (!updates || updates.length === 0) return null;
 
-const posts = data.result.filter(p => p.channel_post);
-const ultima = posts[posts.length - 1];
+const ultima = updates[updates.length - 1];
+const msg = ultima.message;
 
-
-if (!ultima) return null;
-
+if (!msg || !msg.text) return null;
 
 let imagem = null;
-if (ultima.channel_post.photo) {
-const fileId = ultima.channel_post.photo.pop().file_id;
-const filePath = await axios.get(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/getFile?file_id=${fileId}`);
-const fileUrl = `https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${filePath.data.result.file_path}`;
-imagem = fileUrl;
-}
 
+if (msg.photo) {
+const fileId = msg.photo[msg.photo.length - 1].file_id;
+const fileData = await axios.get(`https://api.telegram.org/bot${process.env.TELEGRAM_API.split('bot')[1].split('/')[0]}/getFile?file_id=${fileId}`);
+const filePath = fileData.data.result.file_path;
+imagem = `https://api.telegram.org/file/bot${process.env.TELEGRAM_API.split('bot')[1].split('/')[0]}/${filePath}`;
+}
 
 return {
-texto: ultima.channel_post.caption || ultima.channel_post.text || "",
-imagem
+texto: msg.text,
+imagem: imagem
 };
-}
 
+} catch (err) {
+console.log("Erro ao buscar oferta do Telegram:", err.message);
+return null;
+}
+}
 
 module.exports = { buscarUltimaOfertaCompleta };
