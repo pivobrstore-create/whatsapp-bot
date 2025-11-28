@@ -3,42 +3,38 @@ const axios = require('axios');
 async function buscarUltimaOfertaCompleta() {
   try {
     const token = process.env.TELEGRAM_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
 
     const response = await axios.get(
-      `https://api.telegram.org/bot${token}/getUpdates`
+      `https://api.telegram.org/bot${token}/getChatHistory`,
+      {
+        params: {
+          chat_id: chatId,
+          limit: 1
+        }
+      }
     );
 
-    const updates = response.data.result;
-    if (!updates || updates.length === 0) return null;
+    const mensagem = response.data.result[0];
+    if (!mensagem) return null;
 
-    // pega sempre a última atualização
-    const ultima = updates[updates.length - 1];
-
-    // pode vir como mensagem normal ou postagem de canal
-    const msg = ultima.message || ultima.channel_post;
-    if (!msg) return null;
-
-    let texto = msg.text || msg.caption || '';
+    let texto = mensagem.text || mensagem.caption || '';
     let imagem = null;
 
-    if (msg.photo && msg.photo.length > 0) {
-      const fileId = msg.photo[msg.photo.length - 1].file_id;
-
+    if (mensagem.photo) {
+      const fileId = mensagem.photo[mensagem.photo.length - 1].file_id;
       const fileData = await axios.get(
-        `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`
+        `https://api.telegram.org/bot${token}/getFile`,
+        { params: { file_id: fileId } }
       );
-
       const filePath = fileData.data.result.file_path;
       imagem = `https://api.telegram.org/file/bot${token}/${filePath}`;
     }
 
-    return {
-      texto,
-      imagem
-    };
+    return { texto, imagem };
 
   } catch (error) {
-    console.log('ERRO TELEGRAM BOT ESPELHO:', error.message);
+    console.log('ERRO REAL TELEGRAM:', error.message);
     return null;
   }
 }
