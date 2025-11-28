@@ -29,7 +29,7 @@ client.on('ready', () => {
             if (!oferta) return;
 
             const last = JSON.parse(fs.readFileSync('lastPost.json'));
-            if (last.texto === oferta.texto) return;
+            if (last.texto && last.texto === oferta.texto) return;
 
             if (oferta.imagem) {
                 try {
