@@ -1,44 +1,46 @@
 const axios = require('axios');
+let lastUpdateId = 0;
 
 async function buscarUltimaOfertaCompleta() {
-    try {
-        const token = process.env.TELEGRAM_TOKEN;
-        const chatId = process.env.TELEGRAM_CHAT_ID;
+  try {
+    const token = process.env.TELEGRAM_TOKEN;
 
-        const response = await axios.get(
-            `https://api.telegram.org/bot${token}/getChatHistory`,
-            {
-                params: {
-                    chat_id: chatId,
-                    limit: 1
-                }
-            }
-        );
+    const response = await axios.get(
+      `https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}`
+    );
 
-        const mensagem = response.data.result[0];
-        if (!mensagem) return null;
+    const updates = response.data.result;
+    if (!updates || updates.length === 0) return null;
 
-        let texto = mensagem.text || mensagem.caption || '';
-        let imagem = null;
+    const ultima = updates[updates.length - 1];
+    lastUpdateId = ultima.update_id;
 
-        if (mensagem.photo) {
-            const fileId = mensagem.photo[mensagem.photo.length - 1].file_id;
+    const msg = ultima.message || ultima.channel_post;
+    if (!msg) return null;
 
-            const fileData = await axios.get(
-                `https://api.telegram.org/bot${token}/getFile`,
-                { params: { file_id: fileId } }
-            );
+    let texto = msg.text || msg.caption || '';
+    let imagem = null;
 
-            const filePath = fileData.data.result.file_path;
-            imagem = `https://api.telegram.org/file/bot${token}/${filePath}`;
-        }
+    if (msg.photo) {
+      const fileId = msg.photo[msg.photo.length - 1].file_id;
 
-        return { texto, imagem };
+      const fileData = await axios.get(
+        `https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`
+      );
 
-    } catch (error) {
-        console.log('Erro ao buscar oferta do Telegram:', error.message);
-        return null;
+      const filePath = fileData.data.result.file_path;
+      imagem = `https://api.telegram.org/file/bot${token}/${filePath}`;
     }
+
+    return {
+      texto,
+      imagem
+    };
+
+  } catch (error) {
+    console.log('Erro ao buscar oferta do Telegram:', error.message);
+    return null;
+  }
 }
 
 module.exports = { buscarUltimaOfertaCompleta };
